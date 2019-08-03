@@ -2,3 +2,5 @@ node_modules
 .rpt2_cache
 dist
 demo/public/docs
+
+.idea/

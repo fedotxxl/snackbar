@@ -5,6 +5,9 @@ export interface Action {
    * Action button text
    */
   text: string
+
+  class?: string
+
   /**
    * Action button style
    * @example
@@ -52,6 +55,10 @@ export interface SnackOptions {
    * @default 3
    */
   maxStack?: number
+
+  messageAsHtml?: boolean
+
+  class?: string
 }
 
 export interface SnackInstanceOptions {
@@ -60,6 +67,8 @@ export interface SnackInstanceOptions {
   position: Position
   theme: ThemeRules
   maxStack: number
+  messageAsHtml: boolean
+  class: string
 }
 
 export interface SnackResult {
@@ -111,15 +120,19 @@ export class Snackbar {
       actions = [{ text: 'dismiss', callback: () => this.destroy() }],
       position = 'center',
       theme = 'dark',
-      maxStack = 3
+      maxStack = 3,
+      messageAsHtml = false
     } = options
+
     this.message = message
     this.options = {
       timeout,
       actions,
       position,
       maxStack,
-      theme: typeof theme === 'string' ? themes[theme] : theme
+      theme: typeof theme === 'string' ? themes[theme] : theme,
+      messageAsHtml,
+      class: options.class || ''
     }
 
     this.wrapper = this.getWrapper(this.options.position)
@@ -138,7 +151,7 @@ export class Snackbar {
     ) as HTMLDivElement
     if (!wrapper) {
       wrapper = document.createElement('div')
-      wrapper.className = `snackbars snackbars-${position}`
+      wrapper.className = `snackbars snackbars-${position} ${this.options.class}`
       document.body.appendChild(wrapper)
     }
     return wrapper
@@ -168,7 +181,13 @@ export class Snackbar {
 
     const text = document.createElement('div')
     text.className = 'snackbar--text'
-    text.textContent = this.message
+
+    if (this.options.messageAsHtml) {
+      text.innerHTML = this.message
+    } else {
+      text.textContent = this.message
+    }
+
     container.appendChild(text)
 
     // Add action buttons
@@ -176,7 +195,7 @@ export class Snackbar {
       for (const action of this.options.actions) {
         const { style, text, callback } = action
         const button = document.createElement('button')
-        button.className = 'snackbar--button'
+        button.className = 'snackbar--button' + ' ' + (action.class || '')
         button.innerHTML = text
         if (actionColor) {
           button.style.color = actionColor

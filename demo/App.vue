@@ -14,11 +14,14 @@ export default {
   },
 
   mounted() {
-    createSnackbar('Such Snackbar', {
+    createSnackbar('Such <strong>Snackbar</strong>', {
+      messageAsHtml: true,
       position: 'left',
+      class: 'abc',
       actions: [
         {
-          text: 'yes',
+          text: '<i class="abc"></i>',
+          class: 'efg',
           style: {
             color: 'cyan'
           },
