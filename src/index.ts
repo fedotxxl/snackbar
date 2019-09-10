@@ -59,6 +59,8 @@ export interface SnackOptions {
   messageAsHtml?: boolean
 
   class?: string
+
+  instanceClass?: string
 }
 
 export interface SnackInstanceOptions {
@@ -69,6 +71,7 @@ export interface SnackInstanceOptions {
   maxStack: number
   messageAsHtml: boolean
   class: string
+  instanceClass: string
 }
 
 export interface SnackResult {
@@ -132,7 +135,8 @@ export class Snackbar {
       maxStack,
       theme: typeof theme === 'string' ? themes[theme] : theme,
       messageAsHtml,
-      class: options.class || ''
+      class: options.class || '',
+      instanceClass: options.instanceClass || ''
     }
 
     this.wrapper = this.getWrapper(this.options.position)
@@ -159,7 +163,7 @@ export class Snackbar {
 
   insert() {
     const el = document.createElement('div')
-    el.className = 'snackbar'
+    el.className = `snackbar ${this.options.instanceClass}`
     el.setAttribute('aria-live', 'assertive')
     el.setAttribute('aria-atomic', 'true')
     el.setAttribute('aria-hidden', 'false')
