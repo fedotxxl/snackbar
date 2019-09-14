@@ -60,7 +60,11 @@ export interface SnackOptions {
 
   class?: string
 
-  instanceClass?: string
+  instanceClass?: string,
+
+  preventDestroyBeforeComplete?: boolean,
+
+  doNotStack?: boolean
 }
 
 export interface SnackInstanceOptions {
@@ -71,7 +75,9 @@ export interface SnackInstanceOptions {
   maxStack: number
   messageAsHtml: boolean
   class: string
-  instanceClass: string
+  instanceClass: string,
+  preventDestroyBeforeComplete: boolean,
+  doNotStack: boolean
 }
 
 export interface SnackResult {
@@ -114,13 +120,15 @@ export class Snackbar {
    * The snackbar element
    */
   el?: HTMLDivElement
+  textEl?: HTMLDivElement
   private timeoutId?: number
   private visibilityTimeoutId?: number
+  private isCompleted: boolean
 
   constructor(message: string, options: SnackOptions = {}) {
     const {
       timeout = 0,
-      actions = [{ text: 'dismiss', callback: () => this.destroy() }],
+      actions = [{text: 'dismiss', callback: () => this.destroy()}],
       position = 'center',
       theme = 'dark',
       maxStack = 3,
@@ -128,6 +136,7 @@ export class Snackbar {
     } = options
 
     this.message = message
+    this.isCompleted = false
     this.options = {
       timeout,
       actions,
@@ -136,17 +145,41 @@ export class Snackbar {
       theme: typeof theme === 'string' ? themes[theme] : theme,
       messageAsHtml,
       class: options.class || '',
-      instanceClass: options.instanceClass || ''
+      instanceClass: options.instanceClass || '',
+      preventDestroyBeforeComplete: options.preventDestroyBeforeComplete || false,
+      doNotStack: options.doNotStack || false
     }
 
     this.wrapper = this.getWrapper(this.options.position)
     this.insert()
     instances[this.options.position].push(this)
-    this.stack()
+
+    if (this.options.doNotStack) {
+      this.expand();
+    } else {
+      this.stack()
+    }
   }
 
   get theme() {
     return this.options.theme
+  }
+
+  markCompleted() {
+    this.isCompleted = true
+    this.startTimer()
+  }
+
+  setContent(content: HTMLElement) {
+    if (this.textEl) {
+      while (this.textEl.childNodes.length >= 1) {
+        if (this.textEl.firstChild) {
+          this.textEl.removeChild(this.textEl.firstChild);
+        }
+      }
+
+      this.textEl.appendChild(content);
+    }
   }
 
   getWrapper(position: Position): HTMLDivElement {
@@ -168,7 +201,7 @@ export class Snackbar {
     el.setAttribute('aria-atomic', 'true')
     el.setAttribute('aria-hidden', 'false')
 
-    const { backgroundColor, textColor, boxShadow, actionColor } = this.theme
+    const {backgroundColor, textColor, boxShadow, actionColor} = this.theme
 
     const container = document.createElement('div')
     container.className = 'snackbar--container'
@@ -197,7 +230,7 @@ export class Snackbar {
     // Add action buttons
     if (this.options.actions) {
       for (const action of this.options.actions) {
-        const { style, text, callback } = action
+        const {style, text, callback} = action
         const button = document.createElement('button')
         button.className = 'snackbar--button' + ' ' + (action.class || '')
         button.innerHTML = text
@@ -231,21 +264,38 @@ export class Snackbar {
     })
 
     this.el = el
+    this.textEl = text
 
     this.wrapper.appendChild(el)
   }
 
+  instanceClassAdd(clazz: string) {
+    if (this.el) {
+      this.el.classList.add(clazz);
+    }
+  }
+
+  instanceClassRemove(clazz: string) {
+    if (this.el) {
+      this.el.classList.remove(clazz);
+    }
+  }
+
   stack() {
+    if (this.options.doNotStack) {
+      return
+    }
+
     instanceStackStatus[this.options.position] = true
     const positionInstances = instances[this.options.position]
     const l = positionInstances.length - 1
     positionInstances.forEach((instance, i) => {
       // Resume all instances' timers if applicable
       instance.startTimer()
-      const { el } = instance
+      const {el} = instance
       if (el) {
         el.style.transform = `translate3d(0, -${(l - i) * 15}px, -${l -
-          i}px) scale(${1 - 0.05 * (l - i)})`
+        i}px) scale(${1 - 0.05 * (l - i)})`
         const hidden = l - i >= this.options.maxStack
         this.toggleVisibility(el, hidden)
       }
@@ -259,10 +309,10 @@ export class Snackbar {
     positionInstances.forEach((instance, i) => {
       // Stop all instances' timers to prevent destroy
       instance.stopTimer()
-      const { el } = instance
+      const {el} = instance
       if (el) {
         el.style.transform = `translate3d(0, -${(l - i) *
-          el.clientHeight}px, 0) scale(1)`
+        el.clientHeight}px, 0) scale(1)`
         const hidden = l - i >= this.options.maxStack
         this.toggleVisibility(el, hidden)
       }
@@ -289,7 +339,7 @@ export class Snackbar {
    * Destory the snackbar
    */
   async destroy() {
-    const { el, wrapper } = this
+    const {el, wrapper} = this
     if (el) {
       // Animate the snack away.
       el.setAttribute('aria-hidden', 'true')
@@ -324,7 +374,7 @@ export class Snackbar {
   }
 
   startTimer() {
-    if (this.options.timeout && !this.timeoutId) {
+    if (this.options.timeout && !this.timeoutId && (!this.options.preventDestroyBeforeComplete || this.isCompleted)) {
       this.timeoutId = self.setTimeout(
         () => this.destroy(),
         this.options.timeout
