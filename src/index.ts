@@ -258,9 +258,11 @@ export class Snackbar {
 
     el.addEventListener('mouseenter', () => {
       this.expand()
+      this.stopTimer()
     })
     el.addEventListener('mouseleave', () => {
       this.stack()
+      this.startTimer()
     })
 
     this.el = el
@@ -308,7 +310,10 @@ export class Snackbar {
     const l = positionInstances.length - 1
     positionInstances.forEach((instance, i) => {
       // Stop all instances' timers to prevent destroy
-      instance.stopTimer()
+      if (!this.options.doNotStack) {
+        instance.stopTimer()
+      }
+
       const {el} = instance
       if (el) {
         el.style.transform = `translate3d(0, -${(l - i) *
